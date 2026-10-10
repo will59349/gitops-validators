@@ -1,0 +1,98 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    folder: platform
+    interval: 1m
+    rules:
+      - uid: node-cpu-high
+        title: Node CPU usage high
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            relativeTimeRange:
+              from: 600
+              to: 0
+            model:
+              refId: A
+              expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[$__rate_interval]))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.9]
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: CPU on {{ $labels.instance }} is above 90%
+          runbook_url: https://runbooks.example.com/node-cpu-high
+        noDataState: NoData
+        execErrState: Error
+
+      - uid: node-down
+        title: Node exporter target down
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              refId: A
+              expr: up{job="node-exporter"} == 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: node-exporter on {{ $labels.instance }} is down
+        noDataState: Alerting
+        execErrState: Alerting
+
+  - orgId: 1
+    name: ingress
+    folder: platform
+    interval: 30s
+    rules:
+      - uid: ingress-5xx-ratio
+        title: Ingress 5xx ratio high
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            relativeTimeRange:
+              from: 900
+              to: 0
+            model:
+              refId: A
+              expr: sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m])) / sum(rate(nginx_ingress_controller_requests[5m]))
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.05]
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: More than 5% of ingress requests fail

@@ -1,0 +1,14 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: broken-rules
+spec:
+  groups:
+    - name: broken.rules
+      interval: 1 minute
+      rules:
+        - alert: NodeDown
+          expr: up{job="node-exporter"} == 0
+          for: 2 minutes
+          labels:
+            severity: critical

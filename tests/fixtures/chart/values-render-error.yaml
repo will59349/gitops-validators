@@ -1,0 +1,2 @@
+# `dashboards` must be a map; a string makes `range` fail inside helm template.
+dashboards: not-a-map

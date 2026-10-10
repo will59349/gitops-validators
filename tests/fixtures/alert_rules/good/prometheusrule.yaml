@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-rules
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: node.rules
+      interval: 30s
+      rules:
+        - record: instance:node_cpu_utilisation:rate5m
+          expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+        - alert: NodeCPUHigh
+          expr: instance:node_cpu_utilisation:rate5m > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: CPU on {{ $labels.instance }} is above 90%
+        - alert: NodeDown
+          expr: up{job="node-exporter"} == 0
+          for: 2m
+          keep_firing_for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: node-exporter on {{ $labels.instance }} is down

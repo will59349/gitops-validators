@@ -1,0 +1,6 @@
+apiVersion: v2
+name: monitoring-fixture
+description: Tiny chart that renders dashboard and alert-rule ConfigMaps from values
+type: application
+version: 0.1.0
+appVersion: "1.0"

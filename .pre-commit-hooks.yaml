@@ -1,0 +1,39 @@
+# Hooks exposed to other repositories:
+#
+#   repos:
+#     - repo: https://github.com/will59349/gitops-validators
+#       rev: v0.1.0
+#       hooks:
+#         - id: check-alert-rules
+#         - id: check-dashboards
+#         - id: check-helm-values
+#           args: [charts/monitoring, charts/monitoring/values.yaml]
+#
+# check-alert-rules and check-dashboards receive the changed files by default.
+# uid uniqueness is only checked among the files passed in one run, so to check
+# the whole tree on every commit set `pass_filenames: false` and give the
+# directories in `args`.
+- id: check-alert-rules
+  name: check Grafana alert rules
+  description: Grafana alert rule provisioning files, rule ConfigMaps and PrometheusRule objects
+  entry: check-alert-rules
+  language: python
+  types_or: [yaml, json]
+  require_serial: true
+
+- id: check-dashboards
+  name: check Grafana dashboards
+  description: Grafana dashboard JSON and dashboard ConfigMaps
+  entry: check-dashboards
+  language: python
+  types_or: [yaml, json]
+  require_serial: true
+
+- id: check-helm-values
+  name: check Helm values (rendered dashboards and alert rules)
+  description: helm template CHART -f VALUES, then dashboard and alert-rule checks on the output
+  entry: check-helm-values
+  language: python
+  pass_filenames: false
+  always_run: true
+  require_serial: true

@@ -1,0 +1,55 @@
+# GitLab CI snippet for a GitOps repository laid out like:
+#
+#   grafana/alert-rules/     Grafana provisioning YAML or rule ConfigMaps
+#   grafana/dashboards/      dashboard JSON or dashboard ConfigMaps
+#   charts/monitoring/       kube-prometheus-stack wrapper chart + values-*.yaml
+#
+# Add this file with `include: - local: ci/gitops-validators.yml` or paste the
+# jobs into .gitlab-ci.yml.
+
+.gitops-validators:
+  image: python:3.12-slim
+  stage: test
+  before_script:
+    - pip install --quiet "git+https://github.com/will59349/gitops-validators@v0.1.0"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+check-alert-rules:
+  extends: .gitops-validators
+  script:
+    - check-alert-rules grafana/alert-rules
+        --datasource-uid prometheus-main
+        --datasource-uid loki-main
+
+check-dashboards:
+  extends: .gitops-validators
+  script:
+    - check-dashboards grafana/dashboards
+        --datasource-uid prometheus-main
+        --datasource-uid loki-main
+
+check-helm-values:
+  extends: .gitops-validators
+  before_script:
+    - pip install --quiet "git+https://github.com/will59349/gitops-validators@v0.1.0"
+    - apt-get update -qq && apt-get install -y -qq curl >/dev/null
+    - curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  script:
+    - check-helm-values charts/monitoring charts/monitoring/values-*.yaml
+        --dependency-update
+        --kube-version 1.30.0
+        --datasource-uid prometheus-main
+
+# Optional: ask a staging Prometheus whether every expression parses.
+# PROMETHEUS_TOKEN is a masked CI/CD variable; only its *name* is passed on
+# the command line.
+check-alert-rules-semantic:
+  extends: .gitops-validators
+  script:
+    - check-alert-rules grafana/alert-rules
+        --datasource-uid prometheus-main
+        --prometheus-url https://prometheus.staging.example.com
+        --bearer-token-env PROMETHEUS_TOKEN
+  allow_failure: true

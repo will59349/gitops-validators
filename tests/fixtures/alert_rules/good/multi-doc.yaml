@@ -1,0 +1,72 @@
+# Rendered manifest stream: a rule ConfigMap, a PrometheusRule and a Deployment.
+---
+# Source: monitoring/templates/alert-rules.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-alert-rules
+data:
+  rules.yaml: |-
+    apiVersion: 1
+    groups:
+    - folder: platform
+      interval: 1m
+      name: multi-doc-group
+      orgId: 1
+      rules:
+      - annotations:
+          summary: Disk on {{ $labels.instance }} almost full
+        condition: C
+        data:
+        - datasourceUid: prometheus-main
+          model:
+            expr: node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes < 0.1
+            refId: A
+          refId: A
+        - datasourceUid: __expr__
+          model:
+            expression: A
+            refId: C
+            type: threshold
+          refId: C
+        for: 15m
+        labels:
+          severity: critical
+        title: Disk almost full
+        uid: multi-doc-disk-full
+---
+# Source: monitoring/templates/prometheusrule.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: release-rules
+spec:
+  groups:
+    - name: multi-doc.rules
+      rules:
+        - alert: TargetMissing
+          expr: absent(up{job="api"})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: No api targets are scraped
+---
+# Source: monitoring/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.3.0

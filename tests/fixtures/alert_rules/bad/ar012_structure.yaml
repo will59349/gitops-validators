@@ -1,0 +1,7 @@
+# Group without a folder, and `rules` is a string instead of a list.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    interval: 1m
+    rules: none yet

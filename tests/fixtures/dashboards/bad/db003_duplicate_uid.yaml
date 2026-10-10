@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-dup
+  labels:
+    grafana_dashboard: "1"
+data:
+  first.json: |
+    {"uid": "dup-dash", "title": "First", "id": null, "schemaVersion": 39, "panels": []}
+  second.json: |
+    {"uid": "dup-dash", "title": "Second", "id": null, "schemaVersion": 39, "panels": []}

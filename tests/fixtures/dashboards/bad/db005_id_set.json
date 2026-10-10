@@ -1,0 +1,9 @@
+{
+  "uid": "id-set",
+  "title": "Numeric id left from export",
+  "id": 42,
+  "schemaVersion": 39,
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "CPU"}
+  ]
+}

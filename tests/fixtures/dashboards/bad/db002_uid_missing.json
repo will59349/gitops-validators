@@ -1,0 +1,8 @@
+{
+  "title": "Uid missing",
+  "id": null,
+  "schemaVersion": 39,
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "CPU"}
+  ]
+}

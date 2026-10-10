@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-broken
+  labels:
+    grafana_dashboard: "1"
+data:
+  broken.json: |
+    {
+      "uid": "broken-in-configmap",
+      "title": "Broken in ConfigMap",
+      "id": null,
+      "schemaVersion": 39,
+      "panels": [
+        {"id": 1, "type": "timeseries", "title": "CPU"}
+      ]

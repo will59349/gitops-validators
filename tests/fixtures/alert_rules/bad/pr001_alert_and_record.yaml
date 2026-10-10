@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: broken-rules
+spec:
+  groups:
+    - name: broken.rules
+      rules:
+        - alert: NodeCPUHigh
+          record: instance:node_cpu_utilisation:rate5m
+          expr: instance:node_cpu_utilisation:rate5m > 0.9
+          labels:
+            severity: warning
+        - expr: up == 0
+          labels:
+            severity: warning

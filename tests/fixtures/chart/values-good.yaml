@@ -1,0 +1,56 @@
+dashboards:
+  node-overview: |
+    {
+      "uid": "node-overview",
+      "title": "Node overview",
+      "id": null,
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "CPU",
+          "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+          "targets": [
+            {"refId": "A", "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval]))"}
+          ]
+        }
+      ]
+    }
+
+alertRules:
+  groups:
+    - orgId: 1
+      name: node-health
+      folder: platform
+      interval: 1m
+      rules:
+        - uid: node-cpu-high
+          title: Node CPU usage high
+          condition: C
+          data:
+            - refId: A
+              datasourceUid: prometheus-main
+              relativeTimeRange:
+                from: 600
+                to: 0
+              model:
+                refId: A
+                expr: 1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+                conditions:
+                  - evaluator:
+                      type: gt
+                      params: [0.9]
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: CPU on {{ $labels.instance }} is above 90%
+          noDataState: NoData
+          execErrState: Error

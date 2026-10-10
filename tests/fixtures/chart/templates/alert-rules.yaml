@@ -1,0 +1,11 @@
+{{- if .Values.alertRules.groups }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-alert-rules
+data:
+  rules.yaml: |-
+    apiVersion: 1
+{{ toYaml (dict "groups" .Values.alertRules.groups) | indent 4 }}
+{{- end }}

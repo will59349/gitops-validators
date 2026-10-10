@@ -1,0 +1,54 @@
+# Grafana provisioning file embedded in a ConfigMap, plus an unrelated object
+# in the same multi-document stream.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-alert-rules
+  namespace: monitoring
+  labels:
+    grafana_alert: "1"
+data:
+  node.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: node-health-cm
+        folder: platform
+        interval: 1m
+        rules:
+          - uid: cm-node-memory-high
+            title: Node memory usage high
+            condition: C
+            data:
+              - refId: A
+                datasourceUid: prometheus-main
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                model:
+                  refId: A
+                  expr: 1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  refId: C
+                  type: threshold
+                  expression: A
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: Memory on {{ $labels.instance }} is above 90%
+  README.txt: |
+    Keys that do not end with .yaml or .yml are ignored by the check.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  ports:
+    - port: 3000
+  selector:
+    app: grafana

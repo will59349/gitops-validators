@@ -1,0 +1,13 @@
+# The dashboard JSON has a trailing comma after the last panel. helm template
+# renders it without complaint; Grafana's sidecar drops the whole dashboard.
+dashboards:
+  node-overview: |
+    {
+      "uid": "node-overview",
+      "title": "Node overview",
+      "id": null,
+      "schemaVersion": 39,
+      "panels": [
+        {"id": 1, "type": "timeseries", "title": "CPU"},
+      ]
+    }

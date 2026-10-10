@@ -1,0 +1,19 @@
+{
+  "uid": "dup-panel-id",
+  "title": "Duplicate panel id inside a collapsed row",
+  "id": null,
+  "schemaVersion": 39,
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "CPU"},
+    {
+      "id": 2,
+      "type": "row",
+      "title": "Details",
+      "collapsed": true,
+      "panels": [
+        {"id": 3, "type": "stat", "title": "Load"},
+        {"id": 1, "type": "stat", "title": "Memory"}
+      ]
+    }
+  ]
+}

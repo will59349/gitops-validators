@@ -1,0 +1,28 @@
+# Clean without --datasource-uid; AR008 when the allowed set is {prometheus-main}.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    folder: platform
+    interval: 1m
+    rules:
+      - uid: datasource-not-allowed
+        title: Query with datasource outside the allowed set
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: loki-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Query A points at a datasource that is not in the allowed set

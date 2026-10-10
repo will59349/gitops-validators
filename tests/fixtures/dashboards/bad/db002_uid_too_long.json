@@ -1,0 +1,9 @@
+{
+  "uid": "node-overview-this-uid-is-far-too-long-for-grafana",
+  "title": "Uid too long",
+  "id": null,
+  "schemaVersion": 39,
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "CPU"}
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "uid": "node-overview",
+  "title": "Node overview",
+  "id": null,
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["platform"],
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus"
+      },
+      {
+        "name": "instance",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "${datasource}"},
+        "query": "label_values(node_uname_info, instance)"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\", instance=~\"$instance\"}[$__rate_interval]))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "logs",
+      "title": "Kernel log",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "loki", "uid": "loki-main"},
+      "targets": [
+        {"refId": "A", "expr": "{job=\"kernel\", instance=~\"$instance\"}"}
+      ]
+    },
+    {
+      "id": 3,
+      "type": "row",
+      "title": "Details",
+      "collapsed": true,
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 8},
+      "panels": [
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Load",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 9},
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [{"refId": "A", "expr": "node_load1{instance=~\"$instance\"}"}]
+        },
+        {
+          "id": 5,
+          "type": "text",
+          "title": "Notes",
+          "gridPos": {"h": 4, "w": 6, "x": 6, "y": 9},
+          "datasource": "-- Grafana --",
+          "options": {"content": "Runbook: https://runbooks.example.com/node"}
+        }
+      ]
+    }
+  ]
+}

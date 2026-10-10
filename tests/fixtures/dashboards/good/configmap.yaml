@@ -1,0 +1,53 @@
+# Two dashboards in one sidecar ConfigMap, plus an unrelated object in the stream.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-platform
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: platform
+data:
+  cluster-capacity.json: |
+    {
+      "uid": "cluster-capacity",
+      "title": "Cluster capacity",
+      "id": null,
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "id": 1,
+          "type": "gauge",
+          "title": "CPU requests",
+          "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+          "targets": [{"refId": "A", "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"}) / sum(kube_node_status_allocatable{resource=\"cpu\"})"}]
+        }
+      ]
+    }
+  pod-restarts.json: |
+    {
+      "uid": "pod-restarts",
+      "title": "Pod restarts",
+      "id": null,
+      "schemaVersion": 39,
+      "panels": [
+        {
+          "id": 1,
+          "type": "table",
+          "title": "Restarts in the last hour",
+          "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+          "targets": [{"refId": "A", "expr": "increase(kube_pod_container_status_restarts_total[1h]) > 0"}]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: not-a-dashboard
+  namespace: monitoring
+data:
+  config.ini: |
+    [server]
+    root_url = https://grafana.example.com

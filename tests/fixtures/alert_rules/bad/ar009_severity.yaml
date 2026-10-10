@@ -1,0 +1,27 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    folder: platform
+    interval: 1m
+    rules:
+      - uid: severity-unknown
+        title: Severity outside the allowed set
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: severity 'page' is not in the default set

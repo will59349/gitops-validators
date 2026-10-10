@@ -1,0 +1,28 @@
+# The rule uid is 48 characters; Grafana rejects the whole provisioning file.
+alertRules:
+  groups:
+    - orgId: 1
+      name: node-health
+      folder: platform
+      interval: 1m
+      rules:
+        - uid: node-cpu-high-this-uid-is-far-too-long-for-grafana
+          title: Node CPU usage high
+          condition: C
+          data:
+            - refId: A
+              datasourceUid: prometheus-main
+              model:
+                refId: A
+                expr: up == 0
+            - refId: C
+              datasourceUid: __expr__
+              model:
+                refId: C
+                type: threshold
+                expression: A
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: CPU is high

@@ -1,0 +1,24 @@
+{
+  "dashboard": {
+    "uid": "api-latency",
+    "title": "API latency",
+    "id": null,
+    "schemaVersion": 39,
+    "panels": [
+      {
+        "id": 1,
+        "type": "timeseries",
+        "title": "p99 latency",
+        "datasource": {"type": "prometheus", "uid": "prometheus-main"},
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[$__rate_interval])))"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true,
+  "folderUid": "platform"
+}

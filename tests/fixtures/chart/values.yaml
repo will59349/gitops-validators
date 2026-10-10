@@ -1,0 +1,5 @@
+# Default values: nothing rendered. Each values-*.yaml next to this file
+# overrides these to produce one scenario.
+dashboards: {}
+alertRules:
+  groups: []

@@ -1,0 +1,11 @@
+# Valid dashboard JSON, but the key ends in .yaml; the sidecar writes the file,
+# Grafana's dashboard provisioner never loads it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-wrong-key
+  labels:
+    grafana_dashboard: "1"
+data:
+  node-overview.yaml: |
+    {"uid": "wrong-key", "title": "Wrong key", "id": null, "schemaVersion": 39, "panels": []}

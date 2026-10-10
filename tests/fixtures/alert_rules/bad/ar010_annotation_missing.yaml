@@ -1,0 +1,27 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    folder: platform
+    interval: 1m
+    rules:
+      - uid: no-summary
+        title: Summary annotation missing
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: There is a description but no summary

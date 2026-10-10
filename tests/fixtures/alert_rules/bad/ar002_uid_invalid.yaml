@@ -1,0 +1,66 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: node-health
+    folder: platform
+    interval: 1m
+    rules:
+      - uid: node cpu high
+        title: Node CPU usage high (space in uid)
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: CPU is high
+      - uid: node-cpu-high-this-uid-is-far-too-long-for-grafana
+        title: Node CPU usage high (uid too long)
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: CPU is high
+      - title: Node CPU usage high (uid missing)
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: CPU is high

@@ -1,0 +1,29 @@
+# Reuses the uid `node-cpu-high` from ../good/rules.yaml; checked together they
+# must produce AR003 in both files.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: other-team
+    folder: other-team
+    interval: 1m
+    rules:
+      - uid: node-cpu-high
+        title: Other team CPU rule
+        condition: C
+        data:
+          - refId: A
+            datasourceUid: prometheus-main
+            model:
+              refId: A
+              expr: up == 0
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: A
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Other team

@@ -1,0 +1,24 @@
+{
+  "uid": "ds-not-allowed",
+  "title": "Datasource outside the allowed set (clean without --datasource-uid)",
+  "id": null,
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU",
+      "datasource": {"type": "prometheus", "uid": "prometheus-old"},
+      "targets": [
+        {"refId": "A", "datasource": {"type": "prometheus", "uid": "prometheus-old"}, "expr": "up"}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Templated reference is fine",
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"refId": "A", "expr": "up"}]
+    }
+  ]
+}
