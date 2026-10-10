@@ -4,6 +4,16 @@ Pre-merge checks for a GitOps repository that carries Grafana alert rules,
 Grafana dashboards and kube-prometheus-stack values. They catch the mistakes
 that make a whole file silently disappear from Grafana.
 
+## Status
+
+Version 0.1, early. Not yet used in production by the author. The checks are
+exercised in CI against the fixtures in `tests/fixtures` (one failing sample
+per check id), a real `helm template` of the fixture chart, and a local fake
+Prometheus for the query check. They read files and exit non-zero; they change
+nothing. The uid and size limits follow Grafana 10 and 11; verify them against
+the Grafana version you run. A check that passes does not mean a rule is
+correct, only that Grafana will load it.
+
 ## Why
 
 Grafana file provisioning loads a rule file as a unit. One YAML syntax error,
