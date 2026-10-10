@@ -156,6 +156,14 @@ def test_unreachable_prometheus_is_warning_unless_strict():
     assert strict[0].level == LEVEL_ERROR
 
 
+def test_url_credentials_do_not_reach_findings():
+    url = "http://scraper:hunter2@127.0.0.1:1"
+    findings = query_expressions([ref("up")], url, timeout=2)
+    assert findings[0].check == "AQ002"
+    assert findings[0].path == "http://127.0.0.1:1"
+    assert "hunter2" not in findings[0].format_text()
+
+
 def test_substitute_macros_handles_braced_and_bare_forms():
     assert substitute_macros("a[$__rate_interval] b[${__rate_interval}] $__range") == (
         "a[5m] b[5m] 1h"

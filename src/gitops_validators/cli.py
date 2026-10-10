@@ -8,7 +8,16 @@ from collections.abc import Sequence
 
 from . import __version__, alert_rules, dashboards, helm_values, promquery
 from .alert_rules import AlertRuleOptions, ExprRef
-from .common import EXIT_USAGE, Finding, UsageError, collect_files, emit
+from .common import (
+    EXIT_USAGE,
+    Finding,
+    InputFile,
+    UsageError,
+    collect_files,
+    drop_disabled,
+    emit,
+    parse_disabled,
+)
 from .dashboards import DashboardOptions
 from .helm_values import HelmOptions
 
@@ -23,6 +32,14 @@ def _add_output_args(parser: argparse.ArgumentParser) -> None:
         choices=("text", "json"),
         default="text",
         help="output format (default: text, one finding per line)",
+    )
+    parser.add_argument(
+        "--disable",
+        action="append",
+        default=[],
+        metavar="ID[,ID]",
+        help="check ids not to report, for example AR009,AR010 (repeatable; ids are "
+        "listed in docs/checks.md)",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -43,15 +60,17 @@ def _add_alert_rule_args(parser: argparse.ArgumentParser) -> None:
         "--severity",
         default=",".join(alert_rules.DEFAULT_SEVERITIES),
         metavar="LIST",
-        help="comma-separated allowed values of labels.severity "
-        f"(default: {','.join(alert_rules.DEFAULT_SEVERITIES)})",
+        help="comma-separated allowed values of labels.severity; a convention check "
+        "(AR009/PR005), not a Grafana requirement "
+        f"(default: {','.join(alert_rules.DEFAULT_SEVERITIES)}; turn off with --disable)",
     )
     parser.add_argument(
         "--require-annotation",
         action="append",
         default=None,
         metavar="NAME",
-        help="annotation that every Grafana rule must set (repeatable; default: summary)",
+        help="annotation that every Grafana rule must set; a convention check (AR010), "
+        "not a Grafana requirement (repeatable; default: summary; turn off with --disable)",
     )
 
 
@@ -140,7 +159,7 @@ def build_alert_rules_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="check-alert-rules",
         description="Check Grafana alert rule provisioning files, rule ConfigMaps and "
-        "PrometheusRule objects for mistakes that make Grafana skip the whole file.",
+        "PrometheusRule objects for mistakes that make provisioning fail.",
     )
     parser.add_argument("paths", nargs="+", metavar="PATH", help="file or directory")
     _add_output_args(parser)
@@ -154,12 +173,13 @@ def main_alert_rules(argv: Sequence[str] | None = None) -> int:
     parser = build_alert_rules_parser()
     args = parser.parse_args(argv)
     try:
+        disabled = parse_disabled(args.disable)
         files = collect_files(args.paths)
         findings, exprs = alert_rules.check_files(files, _alert_options(args))
         findings.extend(_run_query_check(args, exprs))
     except UsageError as err:
         return _usage_error(parser, err)
-    return emit(findings, args.format)
+    return emit(drop_disabled(findings, disabled), args.format)
 
 
 # --------------------------------------------------------------------------
@@ -183,6 +203,13 @@ def build_dashboards_parser() -> argparse.ArgumentParser:
         help="ConfigMap label that marks dashboards for the sidecar "
         f"(default: {dashboards.DEFAULT_LABEL})",
     )
+    parser.add_argument(
+        "--skip-non-dashboards",
+        action="store_true",
+        help="ignore files that do not look like a dashboard (no panels, rows or "
+        "schemaVersion) even when they are named on the command line; use this when "
+        "another tool, such as pre-commit, passes every changed YAML/JSON file",
+    )
     return parser
 
 
@@ -190,11 +217,14 @@ def main_dashboards(argv: Sequence[str] | None = None) -> int:
     parser = build_dashboards_parser()
     args = parser.parse_args(argv)
     try:
+        disabled = parse_disabled(args.disable)
         files = collect_files(args.paths)
+        if args.skip_non_dashboards:
+            files = [InputFile(f.path, explicit=False) for f in files]
         findings = dashboards.check_files(files, _dashboard_options(args))
     except UsageError as err:
         return _usage_error(parser, err)
-    return emit(findings, args.format)
+    return emit(drop_disabled(findings, disabled), args.format)
 
 
 # --------------------------------------------------------------------------
@@ -260,6 +290,7 @@ def main_helm_values(argv: Sequence[str] | None = None) -> int:
         timeout=args.helm_timeout,
     )
     try:
+        disabled = parse_disabled(args.disable)
         findings, exprs = helm_values.check_helm_values(
             args.chart,
             args.values,
@@ -270,7 +301,7 @@ def main_helm_values(argv: Sequence[str] | None = None) -> int:
         findings.extend(_run_query_check(args, exprs))
     except UsageError as err:
         return _usage_error(parser, err)
-    return emit(findings, args.format)
+    return emit(drop_disabled(findings, disabled), args.format)
 
 
 # --------------------------------------------------------------------------

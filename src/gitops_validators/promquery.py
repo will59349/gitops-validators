@@ -13,6 +13,7 @@ import os
 import re
 import time
 from collections.abc import Iterable
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 
@@ -39,6 +40,28 @@ GRAFANA_MACROS: dict[str, str] = {
 _VARIABLE_RE = re.compile(r"\$\{?[A-Za-z_][A-Za-z0-9_]*\}?|\[\[[A-Za-z_][A-Za-z0-9_]*\]\]")
 
 REJECTED_STATUSES = (400, 422)
+
+
+def display_url(url: str) -> str:
+    """The URL without ``user:password@``, for use in findings and logs."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return "<prometheus-url>"
+    if "@" not in parts.netloc:
+        return url
+    return urlunsplit(parts._replace(netloc=parts.netloc.rsplit("@", 1)[1]))
+
+
+def _scrub(text: str, url: str) -> str:
+    """Remove the credentials part of ``url`` from an error text."""
+    try:
+        netloc = urlsplit(url).netloc
+    except ValueError:
+        return text
+    if "@" in netloc:
+        text = text.replace(netloc.rsplit("@", 1)[0] + "@", "")
+    return text
 
 
 def substitute_macros(expr: str) -> str:
@@ -106,9 +129,10 @@ def query_expressions(
                 transport_failed = True
                 findings.append(
                     Finding(
-                        prometheus_url,
+                        display_url(prometheus_url),
                         "AQ002",
-                        f"could not query Prometheus: {err}; expression check skipped",
+                        f"could not query Prometheus: {_scrub(str(err), prometheus_url)}; "
+                        "expression check skipped",
                         None,
                         LEVEL_ERROR if strict else LEVEL_WARNING,
                     )

@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.0"
+      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.1"
       - name: check-alert-rules
         run: >
           check-alert-rules grafana/alert-rules
@@ -45,7 +45,7 @@ jobs:
         with:
           python-version: "3.12"
       - uses: azure/setup-helm@v4
-      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.0"
+      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.1"
       - name: check-helm-values
         run: >
           check-helm-values charts/monitoring charts/monitoring/values-*.yaml
@@ -63,12 +63,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.0"
+      - run: pip install "git+https://github.com/will59349/gitops-validators@v0.1.1"
       - name: check-alert-rules against staging Prometheus
         env:
           PROMETHEUS_TOKEN: ${{ secrets.PROMETHEUS_TOKEN }}
         run: >
           check-alert-rules grafana/alert-rules
           --datasource-uid prometheus-main
+          --datasource-uid loki-main
+          --query-datasource-uid prometheus-main
           --prometheus-url https://prometheus.staging.example.com
           --bearer-token-env PROMETHEUS_TOKEN

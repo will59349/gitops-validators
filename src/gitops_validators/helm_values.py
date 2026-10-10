@@ -88,7 +88,9 @@ def check_helm_values(
             raise UsageError(f"values file does not exist: {values_file}")
         ok, output = render(chart, values_file, helm_opts)
         if not ok:
-            findings.append(Finding(values_file, "HV001", f"helm template failed: {output}"))
+            # Helm's stderr spans several lines; a finding is one line.
+            message = " ".join(output.split())
+            findings.append(Finding(values_file, "HV001", f"helm template failed: {message}"))
             continue
         source = f"{values_file} (rendered)"
         findings.extend(dashboards.check_rendered(output, source, dashboard_opts))

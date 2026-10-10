@@ -30,6 +30,7 @@ from .common import (
 )
 
 UID_MAX_LENGTH = 40
+UID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 DEFAULT_LABEL = "grafana_dashboard"
 SIZE_WARN_BYTES = 900 * 1024
 SIZE_LIMIT_BYTES = 1024 * 1024
@@ -242,15 +243,17 @@ def _check_dashboard(obj: Any, source: str, raw: str, ctx: _RunContext) -> None:
     ident = uid if isinstance(uid, str) and uid else (title if isinstance(title, str) else None)
 
     # DB002 / DB003: uid
-    if uid is None or uid == "":
+    if uid is None or uid == "" or not isinstance(uid, str):
+        # Loads fine: Grafana generates a uid when it first saves the dashboard.
+        what = "is missing" if uid is None or uid == "" else f"is not a string ({uid!r})"
         ctx.add(
             source,
             "DB002",
-            "uid is missing; Grafana assigns a random one, so links change on every re-provision",
+            f"uid {what}; Grafana generates one, which differs in every Grafana database, "
+            "so links and uid references to this dashboard are not stable",
             ident,
+            LEVEL_WARNING,
         )
-    elif not isinstance(uid, str):
-        ctx.add(source, "DB002", f"uid must be a string, got {type(uid).__name__}", ident)
     elif len(uid) > UID_MAX_LENGTH:
         ctx.add(
             source,
@@ -258,6 +261,8 @@ def _check_dashboard(obj: Any, source: str, raw: str, ctx: _RunContext) -> None:
             f"uid is {len(uid)} characters, the maximum is {UID_MAX_LENGTH}",
             ident,
         )
+    elif not UID_RE.match(uid):
+        ctx.add(source, "DB002", "uid may only contain letters, digits, '-' and '_'", ident)
     else:
         ctx.uids[uid].append(source)
 
@@ -270,8 +275,10 @@ def _check_dashboard(obj: Any, source: str, raw: str, ctx: _RunContext) -> None:
         ctx.add(
             source,
             "DB005",
-            f"id is {obj['id']!r}; exported numeric ids collide on import, set it to null",
+            f"id is {obj['id']!r}; file provisioning ignores it, but an import through the "
+            "HTTP API addresses the dashboard with that database id; set it to null",
             ident,
+            LEVEL_WARNING,
         )
 
     # DB006: panel ids
@@ -308,7 +315,7 @@ def _check_dashboard(obj: Any, source: str, raw: str, ctx: _RunContext) -> None:
 
     # DB008: schemaVersion
     if "schemaVersion" not in obj:
-        ctx.add(source, "DB008", "schemaVersion is missing", ident)
+        ctx.add(source, "DB008", "schemaVersion is missing", ident, LEVEL_WARNING)
 
     # DB009: datasource references
     if opts.datasource_uids:

@@ -2,14 +2,18 @@
 #
 #   repos:
 #     - repo: https://github.com/will59349/gitops-validators
-#       rev: v0.1.0
+#       rev: v0.1.1
 #       hooks:
 #         - id: check-alert-rules
+#           files: ^grafana/alert-rules/
 #         - id: check-dashboards
+#           files: ^grafana/dashboards/
 #         - id: check-helm-values
 #           args: [charts/monitoring, charts/monitoring/values.yaml]
 #
-# check-alert-rules and check-dashboards receive the changed files by default.
+# check-alert-rules and check-dashboards receive the changed YAML/JSON files by
+# default; restrict them with `files`. check-dashboards ignores files that do not
+# look like a dashboard (--skip-non-dashboards).
 # uid uniqueness is only checked among the files passed in one run, so to check
 # the whole tree on every commit set `pass_filenames: false` and give the
 # directories in `args`.
@@ -24,7 +28,7 @@
 - id: check-dashboards
   name: check Grafana dashboards
   description: Grafana dashboard JSON and dashboard ConfigMaps
-  entry: check-dashboards
+  entry: check-dashboards --skip-non-dashboards
   language: python
   types_or: [yaml, json]
   require_serial: true

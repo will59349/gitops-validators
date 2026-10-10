@@ -48,6 +48,7 @@ BAD_CASES = [
     ("db001_configmap_invalid_json.yaml", "DB001"),
     ("db002_uid_too_long.json", "DB002"),
     ("db002_uid_missing.json", "DB002"),
+    ("db002_uid_invalid_chars.json", "DB002"),
     ("db003_duplicate_uid.yaml", "DB003"),
     ("db004_title_missing.json", "DB004"),
     ("db005_id_set.json", "DB005"),
@@ -62,6 +63,19 @@ BAD_CASES = [
 def test_bad_fixture_reports_exactly_its_check_id(name, check):
     findings = run([DASH_BAD / name])
     assert check_ids(findings) == {check}, describe(findings)
+
+
+def test_db002_missing_uid_is_a_warning_and_bad_uid_an_error():
+    # Grafana generates a uid for a dashboard without one; it rejects a long or malformed one.
+    assert [f.level for f in run([DASH_BAD / "db002_uid_missing.json"])] == [LEVEL_WARNING]
+    assert [f.level for f in run([DASH_BAD / "db002_uid_too_long.json"])] == ["error"]
+    assert [f.level for f in run([DASH_BAD / "db002_uid_invalid_chars.json"])] == ["error"]
+
+
+def test_db005_exported_id_is_a_warning():
+    findings = run([DASH_BAD / "db005_id_set.json"])
+    assert [f.level for f in findings] == [LEVEL_WARNING]
+    assert "file provisioning ignores it" in findings[0].message
 
 
 def test_db001_configmap_message_names_configmap_and_key():

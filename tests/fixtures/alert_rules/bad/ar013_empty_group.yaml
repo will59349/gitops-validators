@@ -1,0 +1,18 @@
+# Groups without rules: `rules` empty (what a template renders when a values
+# file defines none), an explicit empty list, and the key left out.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: rendered-empty
+    folder: platform
+    interval: 1m
+    rules:
+  - orgId: 1
+    name: empty-list
+    folder: platform
+    interval: 1m
+    rules: []
+  - orgId: 1
+    name: no-rules-key
+    folder: platform
+    interval: 1m

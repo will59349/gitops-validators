@@ -23,6 +23,7 @@ import yaml
 
 from .common import (
     LEVEL_ERROR,
+    LEVEL_WARNING,
     YAML_EXTENSIONS,
     Finding,
     InputFile,
@@ -47,6 +48,12 @@ VALID_NO_DATA_STATES = frozenset({"NoData", "Alerting", "OK", "KeepLast"})
 VALID_EXEC_ERR_STATES = frozenset({"Error", "Alerting", "OK", "KeepLast"})
 
 EXPRESSION_DATASOURCE = "__expr__"
+
+# Grafana reads every file in provisioning/alerting before it applies any of them
+# and returns the first error (checked in the Grafana 10.4 and 11.6 sources).
+PROVISIONING_FAILS = (
+    "Grafana cannot parse it, and alert provisioning fails as a whole until it is fixed"
+)
 
 
 @dataclass(frozen=True)
@@ -162,8 +169,7 @@ def check_text(text: str, source: str, ctx: _RunContext, *, is_json: bool) -> No
             ctx.add(
                 source,
                 "AR001",
-                f"file is not valid JSON ({json_error_message(err)}); "
-                "Grafana skips the whole file and every rule in it",
+                f"file is not valid JSON ({json_error_message(err)}); " + PROVISIONING_FAILS,
             )
             return
     else:
@@ -173,8 +179,7 @@ def check_text(text: str, source: str, ctx: _RunContext, *, is_json: bool) -> No
             ctx.add(
                 source,
                 "AR001",
-                f"file is not valid YAML ({yaml_error_message(err)}); "
-                "Grafana skips the whole file and every rule in it",
+                f"file is not valid YAML ({yaml_error_message(err)}); " + PROVISIONING_FAILS,
             )
             return
     for doc in docs:
@@ -220,7 +225,7 @@ def _check_configmap(obj: dict[str, Any], source: str, ctx: _RunContext) -> None
                 label,
                 "AR001",
                 f"ConfigMap value is not valid YAML ({yaml_error_message(err)}); "
-                "Grafana skips the whole file and every rule in it",
+                + PROVISIONING_FAILS,
             )
             continue
         for doc in docs:
@@ -254,7 +259,14 @@ def _check_provisioning_doc(doc: dict[str, Any], source: str, ctx: _RunContext) 
                 gident,
             )
         org_id = group.get("orgId", 1)
-        if "interval" in group and not is_valid_duration(group["interval"]):
+        if group.get("interval") is None:
+            ctx.add(
+                source,
+                "AR006",
+                "group has no 'interval'; Grafana file provisioning requires one (e.g. 1m)",
+                gident,
+            )
+        elif not is_valid_duration(group["interval"]):
             ctx.add(
                 source,
                 "AR006",
@@ -262,8 +274,19 @@ def _check_provisioning_doc(doc: dict[str, Any], source: str, ctx: _RunContext) 
                 gident,
             )
         rules = group.get("rules")
+        if rules is None or rules == []:
+            # Harmless to Grafana (it loops over zero rules), but usually not
+            # intended: a values file that defines no rules, or a misspelt key.
+            ctx.add(
+                source,
+                "AR013",
+                "group has no rules; Grafana accepts it and provisions nothing from it",
+                gident,
+                LEVEL_WARNING,
+            )
+            continue
         if not isinstance(rules, list):
-            ctx.add(source, "AR012", "group has no 'rules' list", gident)
+            ctx.add(source, "AR012", "'rules' must be a list", gident)
             continue
         for ri, rule in enumerate(rules):
             if not isinstance(rule, dict):
@@ -314,8 +337,16 @@ def _check_grafana_rule(
     else:
         ctx.titles[(org_id, folder, title.strip())].append(_Location(source, ident))
 
-    # AR006: for
-    if "for" in rule and not is_valid_duration(rule["for"]):
+    # AR014 / AR006: for
+    if rule.get("for") is None:
+        ctx.add(
+            source,
+            "AR014",
+            "'for' is not set; Grafana 11.5 and later use 0s, earlier versions reject the file",
+            ident,
+            LEVEL_WARNING,
+        )
+    elif not is_valid_duration(rule["for"]):
         ctx.add(
             source,
             "AR006",
@@ -447,8 +478,17 @@ def _check_prometheus_rule(obj: dict[str, Any], source: str, ctx: _RunContext) -
                 f"{name}/{gname}",
             )
         rules = group.get("rules")
+        if rules is None or rules == []:
+            ctx.add(
+                source,
+                "AR013",
+                f"group '{gname}' has no rules",
+                name,
+                LEVEL_WARNING,
+            )
+            continue
         if not isinstance(rules, list):
-            ctx.add(source, "AR012", f"group '{gname}' has no 'rules' list", name)
+            ctx.add(source, "AR012", f"'rules' of group '{gname}' must be a list", name)
             continue
         seen_alerts: dict[str, int] = defaultdict(int)
         for ri, rule in enumerate(rules):

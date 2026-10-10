@@ -7,7 +7,7 @@ import pytest
 from conftest import ALERT_BAD, ALERT_GOOD, check_ids, describe
 from gitops_validators import alert_rules
 from gitops_validators.alert_rules import AlertRuleOptions
-from gitops_validators.common import collect_files
+from gitops_validators.common import LEVEL_WARNING, collect_files
 from gitops_validators.durations import is_valid_duration
 
 
@@ -76,6 +76,8 @@ BAD_CASES = [
     ("ar010_annotation_missing.yaml", "AR010"),
     ("ar011_states.yaml", "AR011"),
     ("ar012_structure.yaml", "AR012"),
+    ("ar013_empty_group.yaml", "AR013"),
+    ("ar014_for_missing.yaml", "AR014"),
     ("pr001_alert_and_record.yaml", "PR001"),
     ("pr002_expr_missing.yaml", "PR002"),
     ("pr003_duplicate_alert.yaml", "PR003"),
@@ -90,10 +92,10 @@ def test_bad_fixture_reports_exactly_its_check_id(name, check):
     assert check_ids(findings) == {check}, describe(findings)
 
 
-def test_ar001_message_says_whole_file_is_skipped():
+def test_ar001_message_says_provisioning_fails():
     findings, _ = run([ALERT_BAD / "ar001_invalid_yaml.yaml"])
     assert len(findings) == 1
-    assert "whole file" in findings[0].message
+    assert "alert provisioning fails as a whole" in findings[0].message
     assert "line " in findings[0].message
 
 
@@ -143,6 +145,43 @@ def test_ar006_covers_group_interval_and_rule_for():
     messages = [f.message for f in findings]
     assert any("interval" in m for m in messages)
     assert any("'for'" in m for m in messages)
+
+
+def test_ar006_group_without_interval_is_an_error(tmp_path):
+    # Grafana parses the group interval unconditionally; an empty one fails the file.
+    text = (ALERT_GOOD / "rules.yaml").read_text().replace("    interval: 30s\n", "")
+    p = tmp_path / "rules.yaml"
+    p.write_text(text)
+    findings, _ = run([p])
+    assert [(f.check, f.ident, f.level) for f in findings] == [("AR006", "ingress", "error")]
+    assert "no 'interval'" in findings[0].message
+
+
+def test_ar013_group_without_rules_is_a_warning_not_an_error():
+    findings, _ = run([ALERT_BAD / "ar013_empty_group.yaml"])
+    assert [(f.ident, f.level) for f in findings] == [
+        ("rendered-empty", LEVEL_WARNING),
+        ("empty-list", LEVEL_WARNING),
+        ("no-rules-key", LEVEL_WARNING),
+    ]
+
+
+def test_ar012_rules_of_the_wrong_type_is_still_an_error():
+    findings, _ = run([ALERT_BAD / "ar012_structure.yaml"])
+    assert any("'rules' must be a list" in f.message and f.level == "error" for f in findings)
+
+
+def test_ar013_applies_to_prometheusrule_groups(tmp_path):
+    text = (ALERT_GOOD / "prometheusrule.yaml").read_text()
+    p = tmp_path / "pr.yaml"
+    p.write_text(text + "    - name: empty-group\n      rules: []\n")
+    findings, _ = run([p])
+    assert [(f.check, f.level) for f in findings] == [("AR013", LEVEL_WARNING)]
+
+
+def test_ar014_missing_for_is_a_warning():
+    findings, _ = run([ALERT_BAD / "ar014_for_missing.yaml"])
+    assert [(f.check, f.ident, f.level) for f in findings] == [("AR014", "no-for", LEVEL_WARNING)]
 
 
 def test_ar008_allowed_set_rejects_other_datasources():

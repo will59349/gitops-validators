@@ -35,10 +35,19 @@ def test_dashboards_clean_exit_0(capsys):
 
 
 def test_dashboards_findings_exit_1(capsys):
-    assert main_dashboards([str(DASH_BAD / "db005_id_set.json")]) == 1
+    assert main_dashboards([str(DASH_BAD / "db004_title_missing.json")]) == 1
     out = capsys.readouterr().out.splitlines()
     assert LINE_RE.match(out[0]), out[0]
-    assert "[id-set] DB005" in out[0]
+    assert "DB004: title is missing" in out[0]
+
+
+def test_dashboards_warning_only_exit_0(capsys):
+    # An exported id is ignored by file provisioning: reported, but not a failure.
+    assert main_dashboards([str(DASH_BAD / "db005_id_set.json")]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert LINE_RE.match(out[0]), out[0]
+    assert "[id-set] DB005 (warning)" in out[0]
+    assert out[-1] == "0 error(s), 1 warning(s)"
 
 
 def test_missing_path_exit_2(capsys):
@@ -125,6 +134,53 @@ def test_severity_and_annotation_options(capsys):
     out = capsys.readouterr().out
     assert "AR009" not in out
     assert "AR010: annotations.runbook_url is missing" in out
+
+
+def test_disable_turns_off_convention_checks(capsys):
+    sev = str(ALERT_BAD / "ar009_severity.yaml")
+    ann = str(ALERT_BAD / "ar010_annotation_missing.yaml")
+    assert main_alert_rules([sev, ann]) == 1
+    out = capsys.readouterr().out
+    assert "AR009" in out and "AR010" in out
+    assert main_alert_rules([sev, ann, "--disable", "AR009,AR010"]) == 0
+    assert capsys.readouterr().out == ""
+    # Repeatable, case-insensitive, and each id only silences itself.
+    assert main_alert_rules([sev, ann, "--disable", "ar009", "--disable", "PR005"]) == 1
+    out = capsys.readouterr().out
+    assert "AR009" not in out and "AR010" in out
+
+
+def test_disable_applies_to_prometheusrule_and_dashboards(capsys):
+    assert main_alert_rules([str(ALERT_BAD / "pr005_severity.yaml"), "--disable", "PR005"]) == 0
+    assert main_dashboards([str(DASH_BAD / "db005_id_set.json"), "--disable", "DB005"]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_disable_unknown_id_exit_2(capsys):
+    assert main_alert_rules([str(ALERT_GOOD), "--disable", "AR099"]) == 2
+    assert "unknown check id 'AR099'" in capsys.readouterr().err
+    assert main_dashboards([str(DASH_GOOD), "--disable", "severity"]) == 2
+
+
+def test_disable_is_accepted_by_helm_values(capsys):
+    args = ["tests/fixtures/chart", "tests/fixtures/chart/values-good.yaml", "--disable", "XX001"]
+    assert main_helm_values(args) == 2
+    assert "unknown check id" in capsys.readouterr().err
+
+
+def test_skip_non_dashboards_for_files_passed_by_another_tool(tmp_path, capsys):
+    # pre-commit names every changed YAML/JSON file; those are not all dashboards.
+    other = tmp_path / "package.json"
+    other.write_text('{"name": "x", "version": "1.0.0"}')
+    values = tmp_path / "values.yaml"
+    values.write_text("replicaCount: 2\n")
+    bad = str(DASH_BAD / "db004_title_missing.json")
+    assert main_dashboards([str(other), str(values)]) == 1  # named explicitly: checked
+    capsys.readouterr()
+    assert main_dashboards([str(other), str(values), "--skip-non-dashboards"]) == 0
+    assert capsys.readouterr().out == ""
+    assert main_dashboards([str(other), bad, "--skip-non-dashboards"]) == 1
+    assert "DB004" in capsys.readouterr().out
 
 
 def test_datasource_uid_option_is_repeatable(capsys):

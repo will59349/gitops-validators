@@ -22,6 +22,15 @@ EXTENSIONS = YAML_EXTENSIONS + JSON_EXTENSIONS
 LEVEL_ERROR = "error"
 LEVEL_WARNING = "warning"
 
+# Every check id the tools can report (docs/checks.md). Used to validate --disable.
+CHECK_IDS: frozenset[str] = frozenset(
+    [f"AR{n:03d}" for n in range(1, 15)]
+    + [f"PR{n:03d}" for n in range(1, 6)]
+    + ["AQ001", "AQ002"]
+    + [f"DB{n:03d}" for n in range(1, 12)]
+    + ["HV001"]
+)
+
 
 class UsageError(Exception):
     """Wrong invocation (missing path, missing tool). Exit code 2."""
@@ -152,6 +161,28 @@ def iter_kubernetes_objects(doc: Any) -> Iterable[dict[str, Any]]:
                 yield item
         return
     yield doc
+
+
+def parse_disabled(values: Sequence[str] | None) -> frozenset[str]:
+    """Turn ``--disable AR009,AR010 --disable db005`` into a set of check ids.
+
+    Raises UsageError for an id that does not exist, so a typo cannot silently
+    leave a check enabled.
+    """
+    disabled: set[str] = set()
+    for raw in values or ():
+        for item in raw.split(","):
+            check = item.strip().upper()
+            if not check:
+                continue
+            if check not in CHECK_IDS:
+                raise UsageError(f"--disable: unknown check id '{item.strip()}'")
+            disabled.add(check)
+    return frozenset(disabled)
+
+
+def drop_disabled(findings: Iterable[Finding], disabled: frozenset[str]) -> list[Finding]:
+    return [f for f in findings if f.check not in disabled]
 
 
 def has_errors(findings: Iterable[Finding]) -> bool:

@@ -43,6 +43,7 @@ def test_render_error_is_reported_with_helm_stderr():
     assert check_ids(findings) == {"HV001"}
     assert findings[0].path == str(CHART / "values-render-error.yaml")
     assert "not-a-map" in findings[0].message
+    assert len(findings[0].message.splitlines()) == 1  # one finding, one line
 
 
 def test_extra_set_is_passed_through():

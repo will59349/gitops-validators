@@ -1,0 +1,9 @@
+{
+  "uid": "node overview/v2",
+  "title": "Uid with characters Grafana rejects",
+  "id": null,
+  "schemaVersion": 39,
+  "panels": [
+    {"id": 1, "type": "timeseries", "title": "CPU"}
+  ]
+}
